@@ -1,0 +1,15 @@
+main (){
+	int _a = 3;
+	int b = 7;
+	int okt = 0#o777;
+	int HEX = 0#xABC;
+	float br = 0.01E+3;
+	char c = 'C';
+	bool vrednost = true;
+	loop (_a <= 10)
+	{
+		_a = 10;
+		redo (b == 7 || br >= 0.01);
+		vrednost = false;
+	}
+}
