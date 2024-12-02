@@ -1,0 +1,250 @@
+//import sekcija
+
+import java_cup.runtime.*;
+import java.io.*;
+
+parser code {:
+   public int errCount = 0;
+   public static void main( String[] args ) {
+      try {
+		   FileReader file = new FileReader(args[0]);
+		   Scanner scanner = new MPLexer( file );
+		   MPParserError parser = new MPParserError( scanner );
+		   parser.parse();
+	  		if (parser.errCount == 0)
+				System.out.println("Sintaksna analiza gotova, nema gresaka.");
+			else
+				System.out.println("Sintaksna analiza gotova, broj gresaka: " + parser.errCount);
+   }
+	catch( Exception e ) {
+	   e.printStackTrace();
+	}
+   }
+   public void syntax_error(Symbol cur_token) {
+   	  
+   }
+   
+   public void report_error(String message, Object info) {
+   	   System.out.print( message );
+   }
+   
+   public int getLine() {
+   	  return (( MPLexer) getScanner()).getLine();
+   }
+:};
+
+
+//Terminali
+terminal MAIN, OBR, CBR, OCBR, CCBR, SEMIC, ID, COMMA, INT, CHAR, FLOAT, BOOL;
+terminal ASS, LOOP, REDO, OR, AND, LS, LE, EQ, NEQ, GR, GE, CONST;
+
+//Neterminali
+non terminal Program, Block, Declarations, VarDecl, NameList, Type, StatementList;
+non terminal Statement, RedoLoop, Expression, AndExpression, RelExpression, RelOp, Term;
+
+//Precedences added by Eclipse plugin
+precedence nonassoc error;	// Inserted by Eclipse plugin
+
+//Gramatika
+start with Program;
+
+Program ::= MAIN OBR CBR Block
+		{:
+			System.out.println( "Smena 1: Program ::= main ( ) Block" );
+		:}
+		| error
+		{:
+			System.out.println( "Greska u liniji: " + parser.getLine() + ". Nedostaje main na pocetku programa" );
+			parser.errCount++;
+		:}
+		| MAIN error
+		{:
+			System.out.println( "Greska u liniji: " + parser.getLine() + ". Nedostaje ( nakon main" );
+			parser.errCount++;
+		:}
+		| MAIN OBR error
+		{:
+			System.out.println( "Greska u liniji: " + parser.getLine() + ". Nedostaje ) nakon main(" );
+			parser.errCount++;
+		:}
+		| MAIN OBR CBR error
+		{:
+			System.out.println( "Greska u liniji: " + parser.getLine() + ". Greska u telu main funkcije" );
+			parser.errCount++;
+		:};
+		
+Block ::= OCBR Declarations StatementList CCBR
+		{:
+			System.out.println( "Smena 2: Block ::= { Declarations StatementList }" );
+		:}
+		| OCBR Declarations StatementList error
+		{:
+			System.out.println( "Greska u liniji: " + parser.getLine() + ". Nedostaje } na kraju bloka" );
+			parser.errCount++;
+		:};
+		
+Declarations ::= Declarations VarDecl
+		{:
+			System.out.println( "Smena 3: Declarations ::= Declarations VarDecl" );
+		:}
+			 | /* epsilon */
+		{:
+			System.out.println( "Smena 4: Declarations ::= epsilon" );
+		:};
+
+VarDecl ::= Type NameList SEMIC
+		{:
+			System.out.println( "Smena 5: VarDecl ::= Type NameList ;" );
+		:}
+		| Type NameList error
+		{:
+			System.out.println( "Greska u liniji: " + parser.getLine() + ". Nedostaje ; na kraju deklaracije promenljivih" );
+			parser.errCount++;
+		:};
+		
+NameList ::= ID 
+		{:
+			System.out.println( "Smena 6: NameList ::= ID" );
+		:}
+			| NameList COMMA ID
+		{:
+			System.out.println( "Smena 7: NameList ::= NameList , ID" );
+		:};
+		
+Type ::= INT
+		{:
+			System.out.println( "Smena 8: Type ::= int" );
+		:}
+		| CHAR
+		{:
+			System.out.println( "Smena 9: Type ::= char" );
+		:}
+		| FLOAT
+		{:
+			System.out.println( "Smena 10: Type ::= float" );
+		:}
+		| BOOL
+		{:
+			System.out.println( "Smena 11: Type ::= bool" );
+		:};
+		
+StatementList ::= StatementList Statement 
+		{:
+			System.out.println( "Smena 12: StatementList ::= StatementList Statement" );
+		:}
+		| Statement
+		{:
+			System.out.println( "Smena 13: StatementList ::= Statement" );
+		:};
+		
+Statement ::= RedoLoop 
+		{:
+			System.out.println( "Smena 14: Statement ::= RedoLoop" );
+		:}
+		| ID ASS Expression SEMIC 
+		{:
+			System.out.println( "Smena 15: Statement ::= ID = Expression ;" );
+		:}
+		| ID ASS Expression error 
+		{:
+			System.out.println( "Greska u liniji: " + parser.getLine() + ". Nedostaje ; na kraju izraza dodele" );
+		:}
+		| Block
+		{:
+			System.out.println( "Smena 16: Statement ::= Block" );
+		:};
+		
+RedoLoop ::= LOOP OBR Expression CBR OCBR Statement REDO OBR Expression CBR SEMIC Statement CCBR
+		{:
+			System.out.println( "Smena 17: RedoLoop ::= loop ( Expression ) { Statement redo ( Expression ) ; Statement }" );
+		:}
+		| LOOP OBR Expression CBR error
+		{:
+			System.out.println( "Greska u liniji: " + parser.getLine() + ". Greska u telu loop petlje" );
+			parser.errCount++;
+		:}
+		| LOOP OBR Expression CBR OCBR Statement REDO OBR Expression CBR error
+		{:
+			System.out.println( "Greska u liniji: " + parser.getLine() + ". Nedostaje ; na kraju redo uslova" );
+			parser.errCount++;
+		:}		
+		| LOOP OBR Expression CBR OCBR Statement REDO OBR Expression CBR SEMIC Statement error
+		{:
+			System.out.println( "Greska u liniji: " + parser.getLine() + ". Nedostaje } na kraju loop petlje" );
+			parser.errCount++;
+		:};
+		
+Expression ::= Expression OR AndExpression
+		{:
+			System.out.println( "Smena 18: Expression ::= Expression || AndExpression" );
+		:}
+		| AndExpression
+		{:
+			System.out.println( "Smena 19: Expression ::= AndExpression" );
+		:};
+
+AndExpression ::= AndExpression AND RelExpression
+		{:
+			System.out.println( "Smena 20: AndExpression ::= AndExpression && RelExpression" );
+		:}
+		| AndExpression error
+		{:
+			System.out.println( "Greska u liniji: " + parser.getLine() + ". Nepravilan uslov" );
+			parser.errCount++;
+		:}
+		| RelExpression
+		{:
+			System.out.println( "Smena 21: AndExpression ::= RelExpression" );
+		:};
+				
+RelExpression ::= Term RelOp Term
+		{:
+			System.out.println( "Smena 22: RelExpression ::= Term RelOp Term" );
+		:}
+		| Term error
+		{:
+			System.out.println( "Greska u liniji: " + parser.getLine() + ". Nepravilan uslov" );
+			parser.errCount++;
+		:}
+		| Term
+		{:
+			System.out.println( "Smena 23: RelExpression ::= Term" );
+		:};
+
+RelOp ::= LS
+		{:
+			System.out.println( "Smena 24: RelOp ::= <" );
+		:}
+		| LE
+		{:
+			System.out.println( "Smena 25: RelOp ::= <=" );
+		:}
+		| EQ
+		{:
+			System.out.println( "Smena 26: RelOp ::= ==" );
+		:}
+		| NEQ
+		{:
+			System.out.println( "Smena 27: RelOp ::= !=" );
+		:}
+		| GR
+		{:
+			System.out.println( "Smena 28: RelOp ::= >" );
+		:}
+		| GE
+		{:
+			System.out.println( "Smena 29: RelOp ::= >=" );
+		:};
+
+Term ::= ID
+		{:
+			System.out.println( "Smena 30: Term ::= ID" );
+		:}
+		| CONST
+		{:
+			System.out.println( "Smena 31: Term ::= CONST" );
+		:}
+		| OBR Expression CBR
+		{:
+			System.out.println( "Smena 32: Term ::= ( Expression )" );
+		:};
