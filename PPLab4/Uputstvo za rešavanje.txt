@@ -1,0 +1,16 @@
+1. Iskopiraj java_cup i SymbolTable foldere u svoj projekat i ne menjaj ih.
+2. java_cup batch fajl isto iskopiraj al izmeni odgovarajuce putanje do jdk-a i do .cup specifikacije ako treba.
+3. Iskopiraj u projekat svoju .flex i .cup specifikaciju bez obrade gresaka iz trece lab vezbe.
+4. U .flex specifikaciji izmeni povratne vrednosti kod detekcije konstanti. Za sve konstante razlicitih tipova nek vraca poseban tip konstante(INTCONST, FLOATCONST...). Isto nek vraca i vrednost konstante parsovanu u odgovarajuci tip.
+5. Generisi novi MPLexer preko jflex-a. U pocetku ce da ima puno gresaka jer nedostaje sym klasa, ali to se sve gupi kad generises novi MPParser.
+6. U .cup specifikaciji ucitaj sve dodatne neophodne biblioteke, kao ja.
+7. Dodaj promenljive koje broje greske i upozorenja i promenljivu koja pamti tabelu simbola(SymbolTable).
+8. Proveri da li ima gresaka ili upozorenja i dodaj sve funkcije identicno kao ja (checkWarnings, syntaxError, getLine).
+9. Obavezno dodaj ovo init with isto kao i ja.
+10. Umesto terminala za konstantu, dodaj sve nove terminale, za posebne tipove konstanti koje si malopre definisao u .flex specifikaciji tako da su tipa odgovarajuce Wrapper klase.
+11. Terminal za ID predefinisi da bude tipa String.
+12. Sto se tice neterminala, to se razlikuje od zadatka. Sigurno je da ces morati da pravis novi terminal za preslikavanje konstanti, tako da svaka konstanta moze da se preslika u terminal razlicitog tipa konstanti. Gledaj kako sam ja to uradio sa neterminalom ConstantValue. On je tipa Constant to je klasa iz SymbolTable.
+13. Da bi resio problem deklaracije vise promenljivih sa istim imenom moras neterminal NameList da deklarises kao listu, i onda smenu menjas na isti nacin kao i ja. Problem sa inicijalizacijom se resave na isti nacin kao sto sam i ja resio. Videces tacno gde sam to resio.
+14. Dodatno ako ti zadatak trazi da odredjeni izrazi, promenljive u izrazima itd. treba da budu odredjenog tipa, to resavas na sledeci nacin. Svaki izraz definises da bude odredjenog tipa (kod mene su to neterminali Expression, AndExpression i RelExpression). Konstante i promenljive si vec definisao da mogu biti odredjenog tipa, tako da sada jedino kod smena za izraze proveravas da li izrazi koji ucestvuju u smeni i/ili konstante i promenljive pripadaju dozvoljenom tipu. To radis preko atributa tkind. Pogledaj moje smene za Expression, AndExpression i RelExpression pa ce da ti bude jasnije.
+
+NAPOMENA: Zadatak radi dobro s tim sto baguje i vraca pogresne linije u kojima se desila greska, ali greske dobro prepoznaje. Na kraju samo dodaj kao argument main funkcije putanju do primera koji odgovara tvom jeziku. Ako nece da se kompajlira i baca crvenu gresku problem je do gramatike tvog primera.

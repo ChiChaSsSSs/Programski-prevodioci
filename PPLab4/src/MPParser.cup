@@ -1,0 +1,288 @@
+//import sekcija
+
+import java_cup.runtime.*;
+import java.io.*;
+import java.util.*;
+import SymbolTable.*;
+
+parser code {:
+	public int errNo = 0;
+	public int warnNo = 0;
+	SymbolTable symbolTable; 
+
+   public static void main( String[] args )
+   {
+      try
+	  {
+		   FileReader file = new FileReader( args[0] );
+		   java_cup.runtime.Scanner scanner = new MPLexer( file );
+		   MPParser parser = new MPParser( scanner );
+		   parser.parse();
+		   parser.checkWarnings();
+		   if ( parser.errNo==0 && parser.warnNo==0 )
+		   		System.out.println("Analiza zavrsena. U kodu nema gresaka." );
+ 		   else
+ 				System.out.println("Analiza zavrsena. Broj gresaka: " + parser.errNo + " Broj upozorenja: " + parser.warnNo ); 
+	  }
+	  catch( Exception e )
+	  {
+		   e.printStackTrace();
+	  }
+   }
+   public void checkWarnings()
+   {
+   		SymbolNode current = symbolTable.getVariables();
+ 		while ( current != null )
+ 		{
+ 			Variable var = ( Variable ) current;
+ 			if ( var.last_def == -1 && var.last_use == -1 )
+ 			{
+ 				System.out.println("Upozorenje: Promenljiva " + var.name + "je deklarisana, ali se ne koristi."); 
+				warnNo++;
+			}
+ 			else if ( var.last_def > var.last_use )
+ 			{
+ 				System.out.println("Upozorenje: Vrednost dodeljena prom. " + var.name + " u liniji " + var.last_def + " se nigde ne koristi." );
+				warnNo++;
+ 			}
+ 		current = current.next;
+ 		}
+ 	}
+	public void syntax_error(Symbol cur_token)
+ 	{
+
+ 	}
+
+ 	public int getLine()
+ 	{
+ 		return (( MPLexer) getScanner()).getLine();
+ 	}
+:};
+
+init with {:
+	symbolTable = new SymbolTable();
+:}
+
+
+//Terminali
+terminal MAIN, OBR, CBR, OCBR, CCBR, SEMIC, COMMA, INT, CHAR, FLOAT, BOOL;
+terminal ASS, LOOP, REDO, OR, AND, LS, LE, EQ, NEQ, GR, GE;
+terminal String ID;
+terminal Integer INTCONST;
+terminal Float FLOATCONST;
+terminal Character CHARCONST;
+terminal Boolean BOOLCONST;
+
+//Neterminali
+non terminal Program, Block, Declarations, VarDecl, StatementList;
+non terminal Statement, RedoLoop, RelOp;
+non terminal Type TypeExp, Expression, AndExpression, RelExpression, Term;
+non terminal ArrayList NameList;
+non terminal Constant ConstantValue;
+
+
+//Gramatika
+start with Program;
+
+Program ::= MAIN OBR CBR Block
+		{:
+		:};
+		
+Block ::= OCBR Declarations StatementList CCBR
+		{:
+		:};
+
+Declarations ::= Declarations VarDecl
+		{:
+		:}
+			 | /* epsilon */
+		{:
+		:};
+
+VarDecl ::= TypeExp:t NameList:niz SEMIC
+		{:
+			for (int i = 0; i < niz.size(); i++)
+			{
+				String ime = (String) niz.get(i);
+				if (!parser.symbolTable.addVar(ime, t))
+				{
+					System.out.println("Greska u liniji: " + parser.getLine() + ", Promenljiva: " + ime + " je vec deklarisana!");
+					parser.errNo++;
+				}
+			}
+		:};
+		
+NameList ::= ID:ime
+		{:
+			RESULT = new ArrayList();
+			RESULT.add(ime);
+		:}
+			| NameList:niz COMMA ID:ime
+		{:
+			RESULT = niz;
+			RESULT.add(ime);
+		:};
+		
+TypeExp ::= INT
+		{:
+			RESULT = parser.symbolTable.getType("integer");
+		:}
+		| CHAR
+		{:
+			RESULT = parser.symbolTable.getType("char");
+		:}
+		| FLOAT
+		{:
+			RESULT = parser.symbolTable.getType("float");
+		:}
+		| BOOL
+		{:
+			RESULT = parser.symbolTable.getType("bool");
+		:};
+		
+StatementList ::= StatementList Statement 
+		{:
+		:}
+		| Statement
+		{:
+		:};
+		
+Statement ::= RedoLoop 
+		{:
+		:}
+		| ID:ime ASS Expression:e SEMIC 
+		{:
+			Variable var = parser.symbolTable.getVar(ime);
+			if (var == null)
+			{
+				System.out.println("Greska u liniji: " + parser.getLine() + ", Promenljiva: " + ime + " nije deklarisana!");
+				parser.errNo++;				
+			}
+			else
+			{
+				var.last_def = parser.getLine();
+				if ( var.type.tkind != e.tkind )
+                {
+                    System.out.println( "Greska u liniji " + parser.getLine() + ": Neslaganje tipa u naredbi dodele." );
+                    parser.errNo++;
+                }
+			}
+		:}
+		| Block
+		{:
+		:};
+		
+RedoLoop ::= LOOP OBR Expression:e1 CBR OCBR Statement REDO OBR Expression:e2 CBR SEMIC Statement CCBR
+		{:
+			if (e1.tkind != Type.BOOL || e2.tkind != Type.BOOL)
+			{
+				System.out.println("Greska u liniji: " + parser.getLine() + ", izrazi u zagradama moraju biti logickog tipa!");
+				parser.errNo++;		
+			}
+		:};
+		
+Expression ::= Expression:e OR AndExpression:a
+		{:
+			if (e.tkind != Type.BOOL || a.tkind != Type.BOOL)
+			{
+				System.out.println("Greska u liniji: " + parser.getLine() + ", Logicki operatori se mogu primeniti samo nad operandima logickog tipa!");
+				parser.errNo++;	
+			}
+			RESULT = parser.symbolTable.getType("bool");
+		:}
+		| AndExpression: a
+		{:
+			RESULT = a;
+		:};
+
+AndExpression ::= AndExpression:a AND RelExpression:r
+		{:
+			if (a.tkind != Type.BOOL || r.tkind != Type.BOOL)
+			{
+				System.out.println("Greska u liniji: " + parser.getLine() + ", Logicki operatori se mogu primeniti samo nad operandima logickog tipa!");
+				parser.errNo++;	
+			}
+			RESULT = parser.symbolTable.getType("bool");
+		:}
+		| RelExpression: r
+		{:
+			RESULT = r;
+		:};
+				
+RelExpression ::= Term:t1 RelOp Term:t2
+		{:
+			if ((t1.tkind != Type.INTEGER && t1.tkind != Type.FLOAT) || (t2.tkind != Type.INTEGER && t2.tkind != Type.FLOAT))
+			{
+				System.out.println("Greska u liniji: " + parser.getLine() + ", Relacioni operatori se mogu primeniti samo nad operandima numerickog tipa!");
+				parser.errNo++;	
+			}
+			RESULT = parser.symbolTable.getType("bool");
+		:}
+		| Term:t
+		{:
+			RESULT = t;
+		:};
+
+RelOp ::= LS
+		{:
+		:}
+		| LE
+		{:
+		:}
+		| EQ
+		{:
+		:}
+		| NEQ
+		{:
+		:}
+		| GR
+		{:
+		:}
+		| GE
+		{:
+		:};
+
+Term ::= ID:ime
+		{:
+			Variable var = parser.symbolTable.getVar(ime);
+			if (var == null)
+			{
+				System.out.println("Greska u liniji: " + parser.getLine() + ", Promenljiva: " + ime + " nije deklarisana!");
+				parser.errNo++;	
+				RESULT = parser.symbolTable.getType("unknown" );
+			}
+			else
+			{
+				RESULT = var.type;
+				if (var.last_def == -1)
+				{
+					System.out.println("Greska u liniji: " + parser.getLine() + ", Promenljiva: " + ime + " nije inicijalizovana!");
+					parser.errNo++;	
+				}
+			}
+		:}
+		| ConstantValue:k
+		{:
+			RESULT = k.type;
+		:}
+		| OBR Expression:e CBR
+		{:
+			RESULT = e;
+		:};
+		
+ConstantValue ::= INTCONST:c
+		{:
+			RESULT = new Constant( parser.symbolTable.getType("integer"), c);
+		:}
+		| FLOATCONST:c
+		{:
+			RESULT = new Constant( parser.symbolTable.getType("float"), c);
+		:}
+		| CHARCONST:c
+		{:
+			RESULT = new Constant( parser.symbolTable.getType("char"), c);
+		:}
+		| BOOLCONST:c
+		{:
+			RESULT = new Constant( parser.symbolTable.getType("bool"), c);
+		:};
